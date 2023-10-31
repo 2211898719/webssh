@@ -41,7 +41,7 @@ jQuery(function ($) {
         DISCONNECTED = 0, CONNECTING = 1, CONNECTED = 2, state = DISCONNECTED,
         messages = {1: 'This client is connecting ...', 2: 'This client is already connnected.'}, key_max_size = 16384,
         fields = ['hostname', 'port', 'username'],
-        form_keys = fields.concat(['password', 'totp', 'proxytype', 'proxyip', 'proxyport', 'proxyrdns', 'proxyuser', 'proxypass']),
+        form_keys = fields.concat(['password', 'privatekey', 'totp', 'proxytype', 'proxyip', 'proxyport', 'proxyrdns', 'proxyuser', 'proxypass']),
         opts_keys = ['bgcolor', 'title', 'encoding', 'command', 'term', 'fontsize', 'fontcolor', 'cursor'],
         url_form_data = {}, url_opts_data = {}, validated_form_data, event_origin,
         hostname_tester = /((^\s*((([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5]))\s*$)|(^\s*((([0-9A-Fa-f]{1,4}:){7}([0-9A-Fa-f]{1,4}|:))|(([0-9A-Fa-f]{1,4}:){6}(:[0-9A-Fa-f]{1,4}|((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3})|:))|(([0-9A-Fa-f]{1,4}:){5}(((:[0-9A-Fa-f]{1,4}){1,2})|:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3})|:))|(([0-9A-Fa-f]{1,4}:){4}(((:[0-9A-Fa-f]{1,4}){1,3})|((:[0-9A-Fa-f]{1,4})?:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}))|:))|(([0-9A-Fa-f]{1,4}:){3}(((:[0-9A-Fa-f]{1,4}){1,4})|((:[0-9A-Fa-f]{1,4}){0,2}:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}))|:))|(([0-9A-Fa-f]{1,4}:){2}(((:[0-9A-Fa-f]{1,4}){1,5})|((:[0-9A-Fa-f]{1,4}){0,3}:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}))|:))|(([0-9A-Fa-f]{1,4}:){1}(((:[0-9A-Fa-f]{1,4}){1,6})|((:[0-9A-Fa-f]{1,4}){0,4}:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}))|:))|(:(((:[0-9A-Fa-f]{1,4}){1,7})|((:[0-9A-Fa-f]{1,4}){0,5}:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}))|:)))(%.+)?\s*$))|(^\s*((?=.{1,255}$)(?=.*[A-Za-z].*)[0-9A-Za-z](?:(?:[0-9A-Za-z]|\b-){0,61}[0-9A-Za-z])?(?:\.[0-9A-Za-z](?:(?:[0-9A-Za-z]|\b-){0,61}[0-9A-Za-z])?)*)\s*$)/;
@@ -117,9 +117,16 @@ jQuery(function ($) {
             val = pair.slice(1).join('=').trim();
 
             if (form_keys.indexOf(key) >= 0) {
+                if (key === 'privatekey') {
+                    console.log("privatekey", decodeURIComponent(val))
+                    form_map[key] = txtToFile(decodeURIComponent(val), "privatekey");
+                    //去除掉url中的privatekey
+                    window.history.replaceState({}, null, window.location.href.replace(/&privatekey=[^&]*/, ''))
+                    continue
+                }
+
                 form_map[key] = val;
             } else if (opts_keys.indexOf(key) >= 0) {
-                console.log(key, val)
                 opts_map[key] = val;
             }
         }
@@ -127,6 +134,20 @@ jQuery(function ($) {
         if (form_map.password) {
             form_map.password = decode_password(form_map.password);
         }
+    }
+
+    function str2ab(str) {
+        var buf = new ArrayBuffer(str.length * 2); // 每个字符占用2个字节
+        var bufView = new Uint8Array(buf);// Uint8Array可换成其它
+        for (var i = 0, strLen = str.length; i < strLen; i++) {
+            bufView[i] = str.charCodeAt(i);
+        }
+        return buf;
+    }
+
+    function txtToFile(str, name) {
+        let blob = new Blob([str], );
+        return new File([blob], name, );
     }
 
 
@@ -582,6 +603,7 @@ jQuery(function ($) {
 
     function validate_form_data(data) {
         clean_data(data);
+        console.log("当前数据", data)
 
         var hostname = data.get('hostname'), port = data.get('port'), username = data.get('username'),
             pk = data.get('privatekey'), result = {
@@ -659,7 +681,7 @@ jQuery(function ($) {
         function ajax_post() {
             status.text('');
             button.prop('disabled', true);
-
+            console.log("提交的数据：", data)
             $.ajax({
                 url: url,
                 type: 'post',
@@ -714,9 +736,19 @@ jQuery(function ($) {
 
         status.text('');
         button.prop('disabled', true);
+        console.log("提交的数据：", data)
+
+        let formData = new FormData()
+        Object.keys(data).forEach(key=>formData.append(key,data[key]))
 
         $.ajax({
-            url: url, type: 'post', data: data, complete: ajax_complete_callback,
+            url: url,
+            type: 'post',
+            data: formData,
+            complete: ajax_complete_callback,
+            cache: false,
+            contentType: false,
+            processData: false
         }).then(() => {
             window.parent.postMessage({event: 'connected'}, '*')
         }).catch(() => {
@@ -733,6 +765,8 @@ jQuery(function ($) {
             console.log(messages[state]);
             return;
         }
+
+        console.log("privatekey：", privatekey)
 
         if (hostname === undefined) {
             result = connect_without_options();

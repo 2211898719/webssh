@@ -534,7 +534,7 @@ class IndexHandler(MixinHandler, tornado.web.RequestHandler):
 
         self.check_origin()
 
-        logging.info('Connected from {}'.format(self.get_args()))
+        # logging.info('Connected from {}'.format(self.get_args()))
         try:
             args = self.get_args()
         except InvalidValueError as exc:

@@ -146,8 +146,8 @@ jQuery(function ($) {
     }
 
     function txtToFile(str, name) {
-        let blob = new Blob([str], );
-        return new File([blob], name, );
+        let blob = new Blob([str],);
+        return new File([blob], name,);
     }
 
 
@@ -739,7 +739,7 @@ jQuery(function ($) {
         console.log("提交的数据：", data)
 
         let formData = new FormData()
-        Object.keys(data).forEach(key=>formData.append(key,data[key]))
+        Object.keys(data).forEach(key => formData.append(key, data[key]))
 
         $.ajax({
             url: url,
@@ -809,8 +809,18 @@ jQuery(function ($) {
     window.onmessage = function (event) {
         //如果是command则执行
         if (event.data.command) {
-            console.log('command', event.data.command);
-            window.sock.send(JSON.stringify({'data': event.data.command + '\r'}));
+            //如果已经连接则发送
+            if (window.sock.readyState === 1) {
+                window.sock.send(JSON.stringify({'data': event.data.command + '\r'}));
+            } else {
+                //如果未连接则缓存到url_opts_data中
+                if (url_opts_data.command) {
+                    url_opts_data.command += '\r' + event.data.command;
+                } else {
+                    url_opts_data.command = event.data.command;
+                }
+            }
+
         }
     }
 
@@ -820,6 +830,10 @@ jQuery(function ($) {
         event.preventDefault();
         connect();
     });
+
+    setInterval(() => {
+        sock.send(JSON.stringify({'heartbeat': 'ping'}));
+    }, 60 * 1000);
 
 
     function cross_origin_connect(event) {
